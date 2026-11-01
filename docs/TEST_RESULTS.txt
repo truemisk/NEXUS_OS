@@ -1,0 +1,11 @@
+NEXUS OS v0.4.0 PHASE 4 — Local Lua 5.3 test results
+2026-11-01
+
+Phase 3 regression (updated for v4 exit flow): 42 passed / 0 failed
+Phase 4 new modules + UI:                   29 passed / 0 failed
+Autostart isolated filesystem:                8 passed / 0 failed
+Standalone bundle runtime smoke:              1 passed / 0 failed
+TOTAL:                                       80 passed / 0 failed
+
+Lua module-load check also passed. These are not Minecraft test results.
+Pending: real GPU, disk, resolution and .shrc behavior in user modpack.

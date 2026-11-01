@@ -1,0 +1,11 @@
+NEXUS / WORKSPACE                                        v0.3.0 OPENOS
+DESKTOP / APPLICATIONS
+SYSTEM READY
+[1 File Manager] [2 NEXUS Terminal]       LIVE / STATUS
+[3 System Monitor] [4 System Info]       GPU  ...
+[5 Settings]       [6 Notifications]      RAM  ...
+[7 About NEXUS]    [8 Exit NEXUS]         DEPTH ...
+
+[HOME] [FILE] [TERM] [MON] [SET] [LOG]     1-8 APPS TAB MOVE ESC BACK
+
+This is an approximate ASCII design guide, not a pixel-perfect emulator capture.

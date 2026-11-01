@@ -1,0 +1,13 @@
+{
+  "schema": 1,
+  "project": "NEXUS OS",
+  "channel": "stable",
+  "version": "0.6.2",
+  "file": "dist/nexus.lua",
+  "url": "https://raw.githubusercontent.com/truemisk/NEXUS_OS/main/dist/nexus.lua",
+  "sha256": "402717913b58adce0e19e759aef787aa9f5e322b714c82300b69386232e5d58d",
+  "size_bytes": 142515,
+  "format": "nexus-single-file-lua",
+  "requires": "OpenOS / OpenComputers / Lua 5.3",
+  "notes": "Stable Phase 5B repair. GitHub in-app updater not yet implemented."
+}

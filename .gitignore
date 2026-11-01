@@ -1,0 +1,15 @@
+# Python / tests
+__pycache__/
+*.pyc
+.pytest_cache/
+# Local OpenOS data, credentials and generated Minecraft saves
+*.bak
+*.tmp
+*.log
+*.key
+*.token
+.env
+# Backups must never be published
+previous.lua
+staged.lua
+*.backup.lua

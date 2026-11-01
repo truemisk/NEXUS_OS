@@ -1,0 +1,135 @@
+PASS path absolute normalization
+PASS parent root handling
+PASS path traversal cannot escape root
+PASS invalid path rejected
+PASS name validation
+PASS immutable boot and nexus directories
+PASS root mutation blocked
+PASS file directory sorted before files
+PASS no overwrite existing destination
+PASS file copy creates actual new file
+PASS file copy of folders prevented
+PASS file rename and collision guard
+PASS moves from protected sources prohibited
+PASS no move of folder into itself
+PASS mkdir and nonrecursive delete
+PASS file deletion protected from system dirs
+PASS file deletion succeeds
+PASS preview text bounded
+PASS binary preview rejected
+PASS disk space information from real proxy
+PASS console insert and caret edit
+PASS console history bounded
+PASS console read-only builtins
+PASS console external shell explicit run only
+PASS input excludes F1-F12 default
+PASS input keyboard editing and clipboard
+PASS input touch foreign screen ignored
+PASS input scroll direction
+PASS application manager closes old when switching
+PASS application failure contained
+PASS monitor memory samples bounded
+PASS file manager selection and view lifecycle
+PASS terminal lifecycle
+PASS real desktop boot and clean exit 80x25
+PASS ultrawide display boot and clean exit 160x50
+PASS compact mode boot 30x11
+PASS number hotkey 1 file manager then ESC home
+PASS number hotkey 2 terminal and text input
+PASS number hotkey 3 monitor then toggle tabs
+PASS mouse taskbar navigates into file manager
+PASS legacy F2 key never changes app
+PASS safe exit after invalid terminal command
+PHASE 3: 42 passed, 0 failed
+PASS logger records in memory and on disk
+PASS logger bounds memory rows
+PASS logger escapes newline in log entry
+PASS logger rotates at byte budget
+PASS logger remains functional when filesystem unwritable
+PASS logger disabled persistence still keeps RAM notices
+PASS services run on interval, not every render
+PASS essential service cannot be stopped
+PASS optional service manual stop and restart
+PASS repeated service errors disable only offending service
+PASS service safe-mode excludes optional services
+PASS service shutdown clears active services
+PASS recovery warns on unclean preceding session
+PASS recovery records bounded errors
+PASS recovery leaves marker after failed clean-up
+PASS session tracks view and opens
+PASS performance samples bounded and low-memory alerts are throttled
+PASS diagnostics based on supplied hardware, not invented values
+PASS diagnostics rejects missing GPU without claiming success
+PASS config migrates phase2 boolean values and uses new defaults
+PASS file manager protects new NEXUS boot and config files
+PASS config rejects malformed values
+PASS config round-trip retains phase4 settings
+PASS system center service tab and navigation
+PASS v4 desktop exit confirmation via keyboard Y
+PASS v4 mouse back and exit no ESC or F-keys
+PASS system center launches via desktop number 7
+PASS UI compact screen renders and exits safely without ESC
+PASS resolution preview can be canceled using clickable BACK
+PHASE4: 29 passed, 0 failed
+PASS Pastebin ID accepts valid IDs, rejects URL and slashes
+PASS staging checks version, compiles Lua, and protects active core
+PASS real OpenOS internet.request callable table iterator is accepted
+PASS non-callable table reports useful error instead of table address
+PASS invalid HTML, older version, invalid Lua are rejected
+PASS download cap prevents oversized staging
+PASS update transaction backs up and restores on rollback
+PASS healthy updated version retains one previous release
+PASS active system not overwritten if candidate missing or invalid
+PASS autostart opt-in uses fixed osv4.lua and preserves other .shrc commands
+PASS legacy v4 autostart migrates without discarding shell customizations
+PASS unknown startup markers cannot be silently overwritten
+PASS autostart recovery guard only removed when explicitly asked
+PASS update center can open and use both tabs without F keys
+PHASE 5A: 14 passed, 0 failed
+PASS v0.5.0 integrated Update Center navigation and terminal restoration
+PASS compact Update Center display
+PASS status no mutations
+PASS no opt-in without YES
+PASS explicit enable preserves existing .shrc
+PASS duplicate enable rejected
+PASS autostart wrapper successful launch clears guard
+PASS autostart wrapper failed launch keeps guard and safely skips
+PASS recover clears guard explicitly
+PASS disable preserves other shell commands
+AUTOSTART: 8 passed, 0 failed
+PASS real-size callable-table 0.5.1 -> 0.5.2 stage, commit, rollback; 30 iterator calls
+PASS single-file bundle launch, menu, quit confirmation, terminal restore
+PASS read-only inventory lists actual components
+PASS empty component list is handled safely
+PASS invalid side and out of range output do not write
+PASS input and output read real values
+PASS manual output writes track original and restore on shutdown
+PASS manual output already correct is not considered owned
+PASS two writes on same output preserve first original
+PASS never overwrite output changed externally
+PASS failed hardware write is not counted as a successful operation
+PASS no redstone hardware does not throw
+PASS automation disabled by default and has no writes
+PASS mirror refuses same input and output side
+PASS mirror requires explicit enable and reads actual input
+PASS disable mirror restores previous level
+PASS emergency stop restores manual and automated owned outputs
+PASS removed device suspends mirror and raises error
+PASS method inspection is read-only and optional
+PASS event monitor records only real relevant signal categories
+PASS event history remains bounded
+PHASE 5B CORE: 19 passed, 0 failed
+PASS 80-column taskbar exposes both UPD and HW controls
+PASS Hardware Center opens without Redstone Card, no fake data
+PASS device inspection preserves desktop and handles unavailable metadata
+PASS real Redstone device can be inspected read-only
+PASS explicit confirmed write is restored during EXIT
+PASS declining output confirmation makes no physical write
+PASS event monitor shows actual OC signals
+PASS Hardware Center renders in compact 40x18 mode and exits
+PHASE 5B GUI: 8 passed, 0 failed
+PASS 0.5.1 -> 0.6.0 update stages callable-table download (139026 bytes)
+PASS updater installs 0.6.0 and retains original release
+PASS interrupted update restores 0.5.1 exactly
+PASS successful trial retains rollback backup and clears transaction
+MODULE LOAD PASS

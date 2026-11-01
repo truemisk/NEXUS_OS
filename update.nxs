@@ -1,0 +1,7 @@
+# NEXUS-UPDATE-MANIFEST: 1
+# INFORMATIVNO: NEXUS 0.6.2 jos ne cita GitHub manifest
+channel=stable
+version=0.6.2
+url=https://raw.githubusercontent.com/truemisk/NEXUS_OS/main/dist/nexus.lua
+sha256=402717913b58adce0e19e759aef787aa9f5e322b714c82300b69386232e5d58d
+size=142515
