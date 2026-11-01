@@ -1,19 +1,14 @@
-# NEXUS OS v0.6.4 — GitHub Update Center
+# NEXUS OS v0.6.5 — test GitHub Update Centera
 
-NEXUS je grafičko računalno okruženje za Minecraft OpenComputers, izgrađeno iznad OpenOS-a. Verzija **v0.6.4** dodaje ažuriranja preko GitHuba bez ovisnosti o Pastebinu.
+Ovo je malo testno izdanje verzije v0.6.4. Ne dodaje nove aplikacije i ne mijenja konfiguraciju, autostart, EEPROM ni OpenOS. Glavna svrha je stvarno testirati cjelokupni proces nadogradnje iz NEXUS-ova sučelja.
 
-- **Nova opcija:** provjera najnovije stabilne verzije preko GitHub Raw manifesta.
-- **Sigurnost:** provjera SHA-256, veličine i Lua sintakse, sigurnosna kopija, potvrda instalacije i rollback.
-- **Kompatibilnost:** postojeće aplikacije, GPU odabir i `/home/osv4.lua` ostaju isti.
-- **Navigacija:** klikabilni HOME/BACK/EXIT i brojčani prečaci; nije potreban ESC ni F-tipke.
-- **VAULT Storage:** nije dodan.
+1. Objavi `dist/nexus.lua`, `update.nxs`, `update.json`, `dist/SHA256SUMS` i ostale priložene promjene na GitHub `main`.
+2. U postojećem NEXUS-u v0.6.4 klikni `[UPD] > CHECK GITHUB UPDATES`. Treba prikazati v0.6.5.
+3. Pokreni `DOWNLOAD GITHUB RELEASE`. Mora prikazati `STAGED v0.6.5` (provjeren SHA-256).
+4. `INSTALL STAGED RELEASE` i potvrdi. Sustav treba sam ponovno pokrenuti NEXUS.
+5. Provjeri `v0.6.5` u zaglavlju. Ponovno otvori `[UPD] > CHECK GITHUB UPDATES` i očekuj `UP TO DATE`.
+6. Provjeri da je `BACKUP YES`, ali nemoj pokretati rollback ako sve radi.
 
-## Nadogradnja s v0.6.2 na v0.6.4
+Ako dođe do mrežne ili SHA-256 pogreške, nemoj zaobilaziti provjeru niti prepisivati `/home/osv4.lua`. Na GitHub Raw CDN-u može kratko kasniti osvježenje datoteka nakon pusha. Sačekaj da se obje datoteke ažuriraju, ponovno provjeri status i ponovi preuzimanje.
 
-Najprije objavi v0.6.4 na GitHubu. Preuzmi distribuciju na OpenOS u `staged.lua`, a zatim koristi postojeći Update Center. Precizne naredbe i postupak opisani su u [uputama](docs/GITHUB_UPDATE_v0.6.4_HR.md).
-
-Nakon instalacije, u Update Centeru otvori **CHECK GITHUB UPDATES**. Ako na GitHubu još piše v0.6.4, sustav treba prikazati da je ažuran. Kada kasnije objavimo v0.6.5, moći ćeš je preuzeti i instalirati iz istog ekrana bez ručnog preuzimanja preko terminala.
-
-## Bitno
-
-Ažuriranje je **ručno potvrđeno**, ne automatsko. SHA-256 provjerava podudarnost s manifestom, ali nije digitalni potpis. GitHub pristup uspješno je provjeren u OpenOS terminalu, no novu v0.6.4 grafičku funkciju tek treba testirati u Minecraftu.
+Više detalja: `docs/GITHUB_UPDATE_v0.6.5_HR.md`.

@@ -2,12 +2,12 @@
   "schema": 1,
   "project": "NEXUS OS",
   "channel": "stable",
-  "version": "0.6.4",
+  "version": "0.6.5",
   "file": "dist/nexus.lua",
   "url": "https://raw.githubusercontent.com/truemisk/NEXUS_OS/main/dist/nexus.lua",
-  "sha256": "0c6862414da02d7fae1409370d71bdbc64414079cfc200b23c9228850e30c2fc",
+  "sha256": "eb53c298543821e2a5875da87b23ab806e0130013371577c0ea25cd8599795a9",
   "size_bytes": 155566,
   "format": "nexus-single-file-lua",
   "requires": "OpenOS / OpenComputers / Lua 5.3",
-  "notes": "GitHub Update Center v0.6.4; checked manually and installed with confirmation. SHA256 is not a signature."
+  "notes": "GitHub Update Center v0.6.5 test release; manual install confirmation required. SHA256 is not a signature."
 }

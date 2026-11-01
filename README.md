@@ -2,12 +2,12 @@
 
 NEXUS OS is a lightweight graphical operating environment for **Minecraft OpenComputers**, running on top of OpenOS (Lua 5.3). It does not replace the BIOS, EEPROM, or OpenOS kernel.
 
-## Current stable release: v0.6.4 — GitHub Update Center
+## Current stable release: v0.6.5 — End-to-end updater test
 
-NEXUS v0.6.4 introduces manually initiated GitHub version checks and an update-download flow with a **pure Lua SHA-256 integrity check**. The existing trial launch, backups, rollback, and opt-in autostart remain intact.
+NEXUS v0.6.5 is a **test-only maintenance release** of the working v0.6.4 GitHub Update Center. It intentionally introduces no new user features; the version bump allows verifying GitHub download, SHA-256 staging, manual installation, automatic relaunch and rollback on real OpenComputers hardware. The existing trial launch, backups, rollback, and opt-in autostart remain intact.
 
 - **[OpenOS-ready bundle](dist/nexus.lua)** — intended for `/home/osv4.lua`
-- **[Croatian installation and test guide](docs/GITHUB_UPDATE_v0.6.4_HR.md)**
+- **[Croatian installation and test guide](docs/GITHUB_UPDATE_v0.6.5_HR.md)**
 - **[Stable update manifest](update.nxs)** — strict key/value format for OpenOS
 - **[JSON release metadata](update.json)** — for external tools
 
@@ -47,4 +47,4 @@ The suite uses `texlua` / Lua 5.3 and mocked OpenComputers APIs. It does not ver
 
 ## Publishing
 
-Never update `update.nxs` without publishing the matching `dist/nexus.lua`. For an updated stable version, build the release, write matching manifests, commit and push all affected files together.
+Never update `update.nxs` without publishing the matching `dist/nexus.lua`. For a new stable version, run `python3 tools/build.py && python3 tools/write_update_manifest.py && sh tests/run_all.sh`. Publish the release file and both manifests in one commit. GitHub Raw caching may briefly return mismatched versions; retry after propagation instead of bypassing SHA-256.

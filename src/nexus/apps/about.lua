@@ -6,7 +6,7 @@ function M.draw(ctx)
   Widgets.frame(ctx,'ABOUT / NEXUS')
   local lines={
     'NEXUS OS',
-    'Core v0.6.4  |  GitHub Update Center',
+    'Core v0.6.5  |  GitHub Update Center',
     '',
     'Graphical environment for OpenComputers.',
     'Runs on OpenOS, without BIOS modifications.',

@@ -1,4 +1,4 @@
--- NEXUS OS v0.6.4 | Phase 5B | one foreground app, no boot modifications.
+-- NEXUS OS v0.6.5 | Phase 5B | one foreground app, no boot modifications.
 local Hardware=require('nexus.core.hardware')
 local Graphics=require('nexus.core.graphics')
 local Theme=require('nexus.core.theme')
@@ -126,7 +126,7 @@ local function run(deps)
     stop=function() if automation.enabled then automation:disable() end end})
   services:activateDefaults(ctx,computer.uptime(),wasUnclean)
   if wasUnclean then notices:push('Previous session ended unexpectedly. Open System Center / Recovery.','warn',computer.uptime()) end
-  logger:log('INFO','core','NEXUS v0.6.4 launched')
+  logger:log('INFO','core','NEXUS v0.6.5 launched')
   function ctx.notify(text,kind)
     notices:push(text,kind,computer.uptime())
     state.dirty=true
@@ -320,7 +320,7 @@ local function run(deps)
     if config.data.splash then
       local w,h=gfx:size()
       gfx:fill(1,1,w,h,ctx.theme.bg)
-      gfx:center(math.max(2,math.floor(h/2)),'NEXUS OS / v0.6.4',ctx.theme.accent,ctx.theme.bg)
+      gfx:center(math.max(2,math.floor(h/2)),'NEXUS OS / v0.6.5',ctx.theme.accent,ctx.theme.bg)
       -- Pull once; forward this event to dispatch so no input is dropped.
       local e,a,b,c,d=event.pull(0.2)
       dispatch(Input.decode(e,a,b,c,hardware,keys,d))

@@ -8,7 +8,7 @@ function M.header(g,t,w,title,mode)
   g:fill(1,1,w,2,t.surface)
   g:text(2,1,'NEXUS / WORKSPACE',t.accent,t.surface,w-2)
   g:text(2,2,title or 'DESKTOP',t.text,t.surface,w-2)
-  if mode=='standard' then g:text(math.max(2,w-14),1,'v0.6.4 OPENOS',t.muted,t.surface,14) end
+  if mode=='standard' then g:text(math.max(2,w-14),1,'v0.6.5 OPENOS',t.muted,t.surface,14) end
 end
 function M.taskbar(ctx)
   local g,t,s=ctx.gfx,ctx.theme,ctx.state

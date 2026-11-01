@@ -15,3 +15,4 @@ texlua tests/test_repair.lua
 texlua tests/syntax_check.lua
 texlua tests/test_github_updates.lua
 texlua tests/test_github_gui.lua
+texlua tests/test_release065.lua

@@ -1,6 +1,6 @@
--- NEXUS OS Core v0.6.4 | GitHub Update Center | OpenOS (Lua 5.3)
+-- NEXUS OS Core v0.6.5 | GitHub Update Center | OpenOS (Lua 5.3)
 -- NEXUS-DISTRIBUTION: 1
--- NEXUS-VERSION: 0.6.4
+-- NEXUS-VERSION: 0.6.5
 -- Modular source layout: see README.md
 -- Single-file distribution: startup remains opt-in; never edits boot files.
 
@@ -13,7 +13,7 @@ function M.draw(ctx)
   Widgets.frame(ctx,'ABOUT / NEXUS')
   local lines={
     'NEXUS OS',
-    'Core v0.6.4  |  GitHub Update Center',
+    'Core v0.6.5  |  GitHub Update Center',
     '',
     'Graphical environment for OpenComputers.',
     'Runs on OpenOS, without BIOS modifications.',
@@ -2678,7 +2678,7 @@ M.TEMP='/home/nexus/updates/download.part'
 M.STAGED='/home/nexus/updates/staged.lua'
 M.META='/home/nexus/updates/staged.meta'
 M.TXN='/home/nexus/updates/transaction'
-M.VERSION='0.6.4'
+M.VERSION='0.6.5'
 M.GITHUB_MANIFEST='/home/nexus/updates/github-manifest.part'
 M.GITHUB_URL='https://raw.githubusercontent.com/truemisk/NEXUS_OS/main/update.nxs'
 M.GITHUB_RELEASE='https://raw.githubusercontent.com/truemisk/NEXUS_OS/main/dist/nexus.lua'
@@ -3067,7 +3067,7 @@ return M
 end
 
 package.preload["nexus.main"] = function(...)
--- NEXUS OS v0.6.4 | Phase 5B | one foreground app, no boot modifications.
+-- NEXUS OS v0.6.5 | Phase 5B | one foreground app, no boot modifications.
 local Hardware=require('nexus.core.hardware')
 local Graphics=require('nexus.core.graphics')
 local Theme=require('nexus.core.theme')
@@ -3195,7 +3195,7 @@ local function run(deps)
     stop=function() if automation.enabled then automation:disable() end end})
   services:activateDefaults(ctx,computer.uptime(),wasUnclean)
   if wasUnclean then notices:push('Previous session ended unexpectedly. Open System Center / Recovery.','warn',computer.uptime()) end
-  logger:log('INFO','core','NEXUS v0.6.4 launched')
+  logger:log('INFO','core','NEXUS v0.6.5 launched')
   function ctx.notify(text,kind)
     notices:push(text,kind,computer.uptime())
     state.dirty=true
@@ -3389,7 +3389,7 @@ local function run(deps)
     if config.data.splash then
       local w,h=gfx:size()
       gfx:fill(1,1,w,h,ctx.theme.bg)
-      gfx:center(math.max(2,math.floor(h/2)),'NEXUS OS / v0.6.4',ctx.theme.accent,ctx.theme.bg)
+      gfx:center(math.max(2,math.floor(h/2)),'NEXUS OS / v0.6.5',ctx.theme.accent,ctx.theme.bg)
       -- Pull once; forward this event to dispatch so no input is dropped.
       local e,a,b,c,d=event.pull(0.2)
       dispatch(Input.decode(e,a,b,c,hardware,keys,d))
@@ -3527,7 +3527,7 @@ function M.header(g,t,w,title,mode)
   g:fill(1,1,w,2,t.surface)
   g:text(2,1,'NEXUS / WORKSPACE',t.accent,t.surface,w-2)
   g:text(2,2,title or 'DESKTOP',t.text,t.surface,w-2)
-  if mode=='standard' then g:text(math.max(2,w-14),1,'v0.6.4 OPENOS',t.muted,t.surface,14) end
+  if mode=='standard' then g:text(math.max(2,w-14),1,'v0.6.5 OPENOS',t.muted,t.surface,14) end
 end
 function M.taskbar(ctx)
   local g,t,s=ctx.gfx,ctx.theme,ctx.state

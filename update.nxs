@@ -1,6 +1,6 @@
 # NEXUS-UPDATE-MANIFEST: 1
 channel=stable
-version=0.6.4
+version=0.6.5
 url=https://raw.githubusercontent.com/truemisk/NEXUS_OS/main/dist/nexus.lua
-sha256=0c6862414da02d7fae1409370d71bdbc64414079cfc200b23c9228850e30c2fc
+sha256=eb53c298543821e2a5875da87b23ab806e0130013371577c0ea25cd8599795a9
 size=155566

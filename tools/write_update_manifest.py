@@ -21,7 +21,7 @@ manifest = f'# NEXUS-UPDATE-MANIFEST: 1\nchannel=stable\nversion={version}\nurl=
 obj = dict(schema=1, project='NEXUS OS', channel='stable', version=version,
            file='dist/nexus.lua', url=url, sha256=sha, size_bytes=size,
            format='nexus-single-file-lua', requires='OpenOS / OpenComputers / Lua 5.3',
-           notes='GitHub Update Center v0.6.4; checked manually and installed with confirmation. SHA256 is not a signature.')
+           notes='GitHub Update Center v0.6.5 test release; manual install confirmation required. SHA256 is not a signature.')
 (root / 'update.json').write_text(json.dumps(obj, indent=2, ensure_ascii=False) + '\n', encoding='utf-8')
 (root / 'dist' / 'SHA256SUMS').write_text(f'{sha}  nexus.lua\n', encoding='ascii')
 print(f'GitHub stable manifest: v{version}, {size} bytes, sha256={sha}')

@@ -5,7 +5,7 @@ import hashlib
 import os
 import re
 
-version = os.environ.get("NEXUS_RELEASE_VERSION", "0.6.4")
+version = os.environ.get("NEXUS_RELEASE_VERSION", "0.6.5")
 if not re.fullmatch(r"\d+\.\d+\.\d+", version):
     raise ValueError("Invalid semantic version")
 
@@ -68,11 +68,10 @@ chunks += [
 ]
 
 output = "\n".join(chunks)
-filename = "nexus.lua" if version=="0.6.4" else f"nexus-test-update-v{version}.lua"
+filename = "nexus.lua"
 (DIST / filename).write_text(output, encoding="utf-8")
 manifest = hashlib.sha256(output.encode()).hexdigest() + "  "+filename+"\n"
-if version=="0.6.4":
-    (DIST / "SHA256SUMS").write_text(manifest, encoding="ascii")
+(DIST / "SHA256SUMS").write_text(manifest, encoding="ascii")
 print("Build:", DIST / filename, len(output.encode()), "bytes")
 print("Modules:", len(modules))
 print("SHA256:", manifest.split()[0])
