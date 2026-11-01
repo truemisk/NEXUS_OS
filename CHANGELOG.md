@@ -1,9 +1,20 @@
-# v0.6.2 — Update Center & Hardware compatibility repair
+# CHANGELOG — NEXUS OS
 
-- OpenOS `pastebin get` transfer with fallback to native Internet API
-- Better error reporting and staging safety checks
-- Finalize verified running release after first successful GUI render
-- Support callable-table component iterators in Hardware Center and hardware status
-- No changes to OpenOS, EEPROM or startup settings
+## v0.6.4 — GitHub Update Center (2026-11-01)
 
-All previous Phase 5B functionality retained; VAULT Storage excluded.
+- Added GitHub stable feed using `update.nxs` and pinned `raw.githubusercontent.com/truemisk/NEXUS_OS` URL.
+- Added `CHECK GITHUB UPDATES` and `DOWNLOAD GITHUB RELEASE` UI actions.
+- Added bundled pure Lua 5.3 SHA-256 (Data Card not required), with streaming verification.
+- Validate channel, version, URL, release size, Lua syntax and SHA-256 before staging.
+- Recalculate staged GitHub file checksum before installation; fail closed on mismatch.
+- Reuse existing user-confirmed backup, trial launch, rollback and `/home/osv4.lua` autostart.
+- Keep legacy Pastebin ID downloading as a fallback. Never auto-install downloaded releases.
+- Added `tools/write_update_manifest.py`, matching `update.nxs`, `update.json`, `SHA256SUMS`.
+- Added GitHub updater core and UI simulation tests.
+- GitHub updates remain **unverified on real Minecraft hardware** until user tests.
+
+## v0.6.2 — Phase 5B repair
+
+- Improved legacy downloader diagnostics, trial finalization and component enumeration.
+
+Earlier version histories and reports remain in `docs/`.

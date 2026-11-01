@@ -1,51 +1,50 @@
 # NEXUS OS
 
-Custom graphical desktop environment for the **Minecraft OpenComputers** mod (Lua 5.3 / OpenOS). NEXUS runs **on top of OpenOS** and does not replace the EEPROM or kernel.
+NEXUS OS is a lightweight graphical operating environment for **Minecraft OpenComputers**, running on top of OpenOS (Lua 5.3). It does not replace the BIOS, EEPROM, or OpenOS kernel.
 
-## Latest stable source snapshot
+## Current stable release: v0.6.4 — GitHub Update Center
 
-**v0.6.2 — Phase 5B repair** (source snapshot prepared for GitHub import). The tested OpenOS installation path is `/home/osv4.lua`.
+NEXUS v0.6.4 introduces manually initiated GitHub version checks and an update-download flow with a **pure Lua SHA-256 integrity check**. The existing trial launch, backups, rollback, and opt-in autostart remain intact.
 
-[Download the stable single-file Lua release](dist/nexus.lua) · [Croatian documentation](README_HR.md) · [Version history](CHANGELOG.md)
+- **[OpenOS-ready bundle](dist/nexus.lua)** — intended for `/home/osv4.lua`
+- **[Croatian installation and test guide](docs/GITHUB_UPDATE_v0.6.4_HR.md)**
+- **[Stable update manifest](update.nxs)** — strict key/value format for OpenOS
+- **[JSON release metadata](update.json)** — for external tools
 
-### Features
+## Main features
 
-- Graphical desktop with Cyan, Green CRT and Amber themes
-- File Manager, Terminal, System Monitor and System Center
-- Safe application navigation without Minecraft-reserved F keys / ESC
-- Update Center with manually staged releases and rollback
-- Optional autostart, logs, diagnostics and recovery
-- Hardware Center (components, redstone, diagnostics and session-only automation)
+Graphical desktop with Cyan, CRT Green and Amber themes; File Manager, Terminal, System Monitor, System Center, Settings, Notifications, Update Center and Hardware Center. Hardware automation remains opt-in. VAULT Storage is not yet integrated. Navigation does not require the Minecraft-reserved ESC/F1–F12 keys.
 
-VAULT Storage is **not** integrated. Hardware writes and updates should be tested on non-critical Minecraft equipment.
+### GitHub Update Center
 
-## Repository layout
+Select `Update Center` → `CHECK GITHUB UPDATES` → `DOWNLOAD GITHUB RELEASE` → `INSTALL STAGED RELEASE`, confirming the installation. The stable feed is pinned to:
 
-```text
-NEXUS_OS/
-├── src/nexus/              # Modular Lua source
-├── dist/nexus.lua          # Stable OpenOS-ready bundle
-├── releases/               # Immutable release snapshots (by convention)
-├── tools/                  # Build and utility scripts
-├── tests/                  # Simulated regression tests
-├── docs/                   # Technical notes
-├── update.nxs              # Future Lua-friendly update metadata
-└── update.json             # Release metadata for external tooling
-```
+- `https://raw.githubusercontent.com/truemisk/NEXUS_OS/main/update.nxs`
+- `https://raw.githubusercontent.com/truemisk/NEXUS_OS/main/dist/nexus.lua`
 
-## Build and test on Linux
+The updater validates channel, version, URL, size, Lua syntax and SHA-256. A SHA-256 mismatch prevents staging; a change after staging prevents installation. It never installs automatically. The OpenOS `wget` command is tried first; a bounded OpenComputers `internet.request` stream is a fallback.
+
+**Security note:** SHA-256 verifies that the downloaded bundle matches the manifest; it does not authenticate the publisher if the manifest itself is compromised. There are no signed releases in v0.6.4. Only use the trusted project repository. GitHub Raw cache propagation may cause temporary checksum mismatches when both files are changed.
+
+## Build and tests
 
 ```sh
 python3 tools/build.py
+python3 tools/write_update_manifest.py
 sh tests/run_all.sh
 ```
 
-The tests use the `texlua` interpreter and mocked OpenComputers components. They do **not** prove functionality on a live Minecraft computer.
+The suite uses `texlua` / Lua 5.3 and mocked OpenComputers APIs. It does not verify in-game networking or actual update completion until tested on Minecraft hardware.
 
-## Update architecture
+## Repository layout
 
-This repository is the first publishing step toward a **GitHub-backed Update Center**. The current v0.6.2 UI does not yet fetch `update.nxs` or `update.json`. The next updater release will add version discovery, network validation, SHA-256 integrity checking when supported, staged installation and rollback.
+- `src/nexus/`: modular source code
+- `dist/nexus.lua`: current stable single-file build
+- `releases/`: preserved earlier release(s)
+- `tools/`: deterministic bundler and manifest writer
+- `tests/`: regression, GUI, SHA-256 and download safety tests
+- `docs/`: technical and Croatian deployment documentation
 
-**Do not interpret the presence of update metadata as an already-working automatic GitHub update feature.**
+## Publishing
 
-For GitHub publication steps, see [GitHub setup (HR)](docs/GITHUB_SETUP_HR.md).
+Never update `update.nxs` without publishing the matching `dist/nexus.lua`. For an updated stable version, build the release, write matching manifests, commit and push all affected files together.

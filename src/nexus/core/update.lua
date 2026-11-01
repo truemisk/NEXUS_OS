@@ -1,4 +1,4 @@
--- NEXUS update transactions: bounded Pastebin downloads, validate, backup and rollback.
+-- NEXUS updates: verified GitHub Raw releases and legacy Pastebin; safe backup/rollback.
 -- Never execute downloaded code during staging. Only trusted user-supplied IDs.
 local M={}
 M.CORE='/home/osv4.lua'
@@ -7,8 +7,13 @@ M.TEMP='/home/nexus/updates/download.part'
 M.STAGED='/home/nexus/updates/staged.lua'
 M.META='/home/nexus/updates/staged.meta'
 M.TXN='/home/nexus/updates/transaction'
-M.VERSION='0.6.2'
+M.VERSION='0.6.4'
+M.GITHUB_MANIFEST='/home/nexus/updates/github-manifest.part'
+M.GITHUB_URL='https://raw.githubusercontent.com/truemisk/NEXUS_OS/main/update.nxs'
+M.GITHUB_RELEASE='https://raw.githubusercontent.com/truemisk/NEXUS_OS/main/dist/nexus.lua'
+M.MANIFEST_LIMIT=2048
 M.MAX_BYTES=300000
+local SHA=require('nexus.core.sha256')
 local function fsDefault() return require('filesystem') end
 local function read(path,max)
   local f=io.open(path,'rb');if not f then return nil end
@@ -141,6 +146,155 @@ function M:fetchInternet(id)
   end
   return true,bytes
 end
+-- GitHub manifest is a small, strict key/value file. Remote URLs are pinned to
+-- this project's exact Raw download path to avoid redirects to foreign hosts.
+function M:parseGitHubManifest(content)
+  if type(content)~='string' or #content>M.MANIFEST_LIMIT then return nil,'Manifest missing or too large' end
+  local fields={}
+  for line in (content..'\n'):gmatch('(.-)\n') do
+    line=line:gsub('\r$','')
+    if line~='' and not line:match('^#') then
+      local key,value=line:match('^([a-z0-9_]+)=([^\r\n]+)$')
+      if not key or fields[key] then return nil,'Malformed or duplicate manifest field' end
+      if not ({channel=true,version=true,url=true,sha256=true,size=true})[key] then
+        return nil,'Unknown manifest field: '..key
+      end
+      fields[key]=value
+    end
+  end
+  if fields.channel~='stable' then return nil,'Non-stable update channel' end
+  if not numbers(fields.version) then return nil,'Invalid manifest version' end
+  if fields.url~=M.GITHUB_RELEASE then return nil,'Untrusted GitHub download URL' end
+  if type(fields.sha256)~='string' or #fields.sha256~=64 or not fields.sha256:match('^[0-9a-f]+$') then
+    return nil,'Invalid SHA-256 checksum'
+  end
+  local size=tonumber(fields.size)
+  if not size or size%1~=0 or size<100 or size>self.limit then return nil,'Invalid release size in manifest' end
+  fields.size=size
+  return fields
+end
+-- Prefer the OpenOS wget command proven on the user's Minecraft machine.
+-- For unsupported shells, use the bounded OpenComputers internet iterator.
+function M:fetchURL(url,path,limit)
+  limit=limit or self.limit
+  if url~=M.GITHUB_URL and url~=M.GITHUB_RELEASE then return false,'Untrusted download URL' end
+  pcall(self.fs.remove,path)
+  local shellError
+  if type(self.shellExecute)=='function' then
+    local launched,a,b=pcall(self.shellExecute,'wget "'..url..'" '..path)
+    if launched and self.fs.exists(path) then
+      local count=self.fs.size(path)
+      if type(count)=='number' and count>0 and count<=limit then return true,count end
+      shellError='wget response size invalid: '..tostring(count)
+    else shellError='wget did not save file: '..tostring(launched and (b or a) or a):sub(1,80) end
+    pcall(self.fs.remove,path)
+  end
+  local request=self.fetch
+  if not request then
+    local found,internet=pcall(require,'internet')
+    if not found or type(internet.request)~='function' then
+      return false,(shellError or 'Network unavailable')..' / Internet Card unavailable'
+    end
+    request=internet.request
+  end
+  local started,iter,reason=pcall(request,url)
+  if not started then return false,(shellError or '')..' / '..tostring(iter):sub(1,100) end
+  local kind=type(iter)
+  local mt=kind=='table' and getmetatable(iter) or nil
+  if kind~='function' and not (kind=='table' and type(mt)=='table' and type(mt.__call)=='function') then
+    return false,(shellError or '')..' / HTTP iterator missing: '..tostring(reason or kind):sub(1,90)
+  end
+  local f,err=self.open(path,'wb')
+  if not f then return false,'Cannot open download: '..tostring(err) end
+  local count=0
+  local transferred,problem=pcall(function()
+    for block in iter do
+      if type(block)~='string' then error('Invalid HTTP chunk') end
+      count=count+#block
+      if count>limit then error('Download exceeds size limit') end
+      assert(f:write(block))
+    end
+    assert(f:flush())
+  end)
+  pcall(function() f:close() end)
+  if not transferred or count==0 then
+    pcall(self.fs.remove,path)
+    return false,transferred and 'Empty response' or tostring(problem):sub(1,100)
+  end
+  return true,count
+end
+function M:checkGitHub()
+  local ok,reason=self:ensure()
+  if not ok then return false,reason end
+  local downloaded,err=self:fetchURL(M.GITHUB_URL,M.GITHUB_MANIFEST,M.MANIFEST_LIMIT)
+  if not downloaded then return false,err end
+  local content=self.read(M.GITHUB_MANIFEST,M.MANIFEST_LIMIT+1)
+  pcall(self.fs.remove,M.GITHUB_MANIFEST)
+  local manifest,why=self:parseGitHubManifest(content)
+  if not manifest then return false,why end
+  local a,b=numbers(manifest.version),numbers(self.version)
+  manifest.newer=false
+  for i=1,3 do
+    if a[i]~=b[i] then manifest.newer=a[i]>b[i];break end
+  end
+  return true,manifest
+end
+function M:verifyGitHubFile(path,manifest)
+  local size=self.fs.size(path)
+  if type(size)~='number' or size~=manifest.size then return false,'GitHub file size mismatch' end
+  local digest,reason=SHA.file(path,self.open,self.limit)
+  if not digest then return false,'SHA-256 failed: '..tostring(reason) end
+  if digest~=manifest.sha256 then return false,'SHA-256 mismatch: download does not match manifest' end
+  local ver,why=self:validate(path)
+  if not ver then return false,why end
+  if ver~=manifest.version then return false,'Downloaded version differs from manifest' end
+  return true
+end
+function M:stageGitHub(manifest)
+  if self.fs.exists(M.TXN) then
+    local accepted,reason=self:acknowledgeRunning()
+    if not accepted then return false,'Pending update transaction: '..tostring(reason) end
+  end
+  -- Refetch the manifest before downloading so the installed candidate and
+  -- its hash always refer to the same release metadata.
+  local ok,latest=self:checkGitHub()
+  if not ok then return false,latest end
+  if not latest.newer then return false,'GitHub has no newer stable version' end
+  if manifest and manifest.version~=latest.version then
+    return false,'GitHub version changed; check updates again'
+  end
+  local downloaded,bytes=self:fetchURL(M.GITHUB_RELEASE,M.TEMP,self.limit)
+  if not downloaded then return false,bytes end
+  local verified,reason=self:verifyGitHubFile(M.TEMP,latest)
+  if not verified then pcall(self.fs.remove,M.TEMP);return false,reason end
+  -- Existing staged data remains intact if downloading or verification fails.
+  local previous=M.STAGED..'.old'
+  pcall(self.fs.remove,previous)
+  if self.fs.exists(M.STAGED) then
+    local moved,why=self.fs.rename(M.STAGED,previous)
+    if not moved then pcall(self.fs.remove,M.TEMP);return false,'Cannot preserve old staged file: '..tostring(why) end
+  end
+  local placed,why=self.fs.rename(M.TEMP,M.STAGED)
+  if not placed then
+    if self.fs.exists(previous) then self.fs.rename(previous,M.STAGED) end
+    return false,'Cannot stage GitHub release: '..tostring(why)
+  end
+  local meta='source=github\nversion='..latest.version..'\nsize='..latest.size..'\nsha256='..latest.sha256..'\n'
+  local saved,saveError=self.write(M.META,meta)
+  if not saved then
+    pcall(self.fs.remove,M.STAGED)
+    if self.fs.exists(previous) then self.fs.rename(previous,M.STAGED) end
+    return false,'Cannot save checksum metadata: '..tostring(saveError)
+  end
+  pcall(self.fs.remove,previous)
+  return true,latest.version,bytes
+end
+function M:stagedSource()
+  local m=self.read(M.META,256)
+  if not self.fs.exists(M.STAGED) then return 'none' end
+  if m and m:find('^source=github\n') then return 'github-sha256' end
+  return 'manual/legacy'
+end
 function M:stage(id)
   if type(id)~='string' or not id:match('^[%w]+$') or #id<6 or #id>16 then
     return false,'Pastebin ID must be 6-16 letters/digits'
@@ -179,6 +333,20 @@ function M:commit()
   if not self.fs.exists(M.STAGED) then return false,'No staged update' end
   local ver,why=self:validate(M.STAGED)
   if not ver then return false,why end
+  local meta=self.read(M.META,256)
+  if meta and meta:find('^source=github\n') then
+    local v=meta:match('\nversion=([^\n]+)')
+    local digest=meta:match('\nsha256=([0-9a-f]+)')
+    local size=tonumber(meta:match('\nsize=(%d+)'))
+    if v~=ver or not digest or #digest~=64 or not size then
+      return false,'GitHub checksum metadata invalid'
+    end
+    local calculated,whySHA=SHA.file(M.STAGED,self.open,self.limit)
+    if not calculated then return false,'GitHub checksum read failed: '..tostring(whySHA) end
+    if calculated~=digest or self.fs.size(M.STAGED)~=size then
+      return false,'GitHub candidate changed since download (SHA-256 mismatch)'
+    end
+  end
   if not self.fs.exists(self.current) then return false,'Active OS missing: '..self.current end
   if self.fs.exists(M.TXN) then return false,'Unresolved update transaction' end
   local ok,err=self:ensure();if not ok then return false,err end

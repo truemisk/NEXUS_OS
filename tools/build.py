@@ -5,7 +5,7 @@ import hashlib
 import os
 import re
 
-version = os.environ.get("NEXUS_RELEASE_VERSION", "0.6.2")
+version = os.environ.get("NEXUS_RELEASE_VERSION", "0.6.4")
 if not re.fullmatch(r"\d+\.\d+\.\d+", version):
     raise ValueError("Invalid semantic version")
 
@@ -15,7 +15,7 @@ DIST = ROOT / "dist"
 DIST.mkdir(exist_ok=True)
 modules = sorted(SRC.rglob("*.lua"))
 chunks = [
-    f"-- NEXUS OS Core v{version} | Phase 5B Repair | OpenOS (Lua 5.3)",
+    f"-- NEXUS OS Core v{version} | GitHub Update Center | OpenOS (Lua 5.3)",
     "-- NEXUS-DISTRIBUTION: 1",
     f"-- NEXUS-VERSION: {version}",
     "-- Modular source layout: see README.md",
@@ -68,10 +68,10 @@ chunks += [
 ]
 
 output = "\n".join(chunks)
-filename = "nexus.lua" if version=="0.6.2" else f"nexus-test-update-v{version}.lua"
+filename = "nexus.lua" if version=="0.6.4" else f"nexus-test-update-v{version}.lua"
 (DIST / filename).write_text(output, encoding="utf-8")
 manifest = hashlib.sha256(output.encode()).hexdigest() + "  "+filename+"\n"
-if version=="0.6.2":
+if version=="0.6.4":
     (DIST / "SHA256SUMS").write_text(manifest, encoding="ascii")
 print("Build:", DIST / filename, len(output.encode()), "bytes")
 print("Modules:", len(modules))

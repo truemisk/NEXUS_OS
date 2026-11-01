@@ -179,6 +179,7 @@ test('update center can open and use both tabs without F keys',function()
  assert(ctx.state.updateCenter.tab==2)
  assert(App.input({kind='char',value='1'},ctx))
  assert(ctx.state.updateCenter.tab==1)
+ for _=1,4 do App.input({kind='down'},ctx) end
  App.input({kind='enter'},ctx)
  assert(ctx.state.updateCenter.mode=='id')
  assert(App.input({kind='back'},ctx) and ctx.state.updateCenter.mode==nil)

@@ -1,6 +1,6 @@
--- NEXUS OS Core v0.6.2 | Phase 5B Repair | OpenOS (Lua 5.3)
+-- NEXUS OS Core v0.6.4 | GitHub Update Center | OpenOS (Lua 5.3)
 -- NEXUS-DISTRIBUTION: 1
--- NEXUS-VERSION: 0.6.2
+-- NEXUS-VERSION: 0.6.4
 -- Modular source layout: see README.md
 -- Single-file distribution: startup remains opt-in; never edits boot files.
 
@@ -13,7 +13,7 @@ function M.draw(ctx)
   Widgets.frame(ctx,'ABOUT / NEXUS')
   local lines={
     'NEXUS OS',
-    'Core v0.6.2  |  Phase 5B: Hardware',
+    'Core v0.6.4  |  GitHub Update Center',
     '',
     'Graphical environment for OpenComputers.',
     'Runs on OpenOS, without BIOS modifications.',
@@ -920,7 +920,7 @@ return M
 end
 
 package.preload["nexus.apps.updatecenter"] = function(...)
--- NEXUS Update Center: explicit Pastebin ID, explicit install confirmation,
+-- NEXUS Update Center: GitHub Raw stable channel + legacy Pastebin,
 -- and OpenOS .shrc autostart management. No automatic remote code execution.
 local Widgets=require('nexus.ui.widgets')
 local Update=require('nexus.core.update')
@@ -929,9 +929,11 @@ local function data(ctx) return ctx.state.updateCenter end
 local function items(ctx)
   if data(ctx).tab==1 then
     return {
-      {title='DOWNLOAD FROM PASTEBIN',detail='Enter trusted Pastebin release ID',id='download'},
+      {title='CHECK GITHUB UPDATES',detail='Read stable NEXUS manifest from GitHub Raw',id='checkgithub'},
+      {title='DOWNLOAD GITHUB RELEASE',detail='SHA-256 verify before staging',id='downloadgithub'},
       {title='INSTALL STAGED RELEASE',detail='Back up OS, switch release, restart NEXUS',id='install'},
       {title='ROLL BACK LAST RELEASE',detail='Restore previous.lua if available',id='rollback'},
+      {title='DOWNLOAD FROM PASTEBIN',detail='Legacy: trusted pastebin.com ID',id='download'},
       {title='REFRESH STATUS',detail='Check staged release and backups',id='refresh'}
     }
   end
@@ -950,7 +952,7 @@ local function refresh(ctx)
   s.guard=ctx.startup.fs.exists(ctx.startup.GUARD or '/home/nexus/startup.guard')
 end
 function M.open(ctx)
-  ctx.state.updateCenter={tab=1,index=1,scroll=0,hits={},mode=nil,buffer='',confirm=nil,message='',staged=nil}
+  ctx.state.updateCenter={tab=1,index=1,scroll=0,hits={},mode=nil,buffer='',confirm=nil,message='',staged=nil,online=nil}
   refresh(ctx)
 end
 function M.close(ctx) ctx.state.updateCenter=nil end
@@ -961,6 +963,28 @@ end
 local function act(ctx,id)
   local s=data(ctx)
   if id=='refresh' then refresh(ctx);message(ctx,'Update status refreshed');return end
+  if id=='checkgithub' then
+    s.message='Checking GitHub...';M.draw(ctx)
+    local ok,result=ctx.updater:checkGitHub()
+    if ok then
+      s.online=result
+      message(ctx,result.newer and ('GitHub v'..result.version..' available') or ('GitHub v'..result.version..' is not newer'),'info')
+    else
+      s.online=nil
+      message(ctx,'GitHub check failed: '..tostring(result),'error')
+    end
+    if ctx.gfx then ctx.gfx.foreground=nil;ctx.gfx.background=nil end
+    if ctx.state then ctx.state.dirty=true end
+    refresh(ctx);return
+  end
+  if id=='downloadgithub' then
+    s.message='Downloading and checking SHA-256...';M.draw(ctx)
+    local ok,ver,bytes=ctx.updater:stageGitHub(s.online)
+    message(ctx,ok and ('SHA-256 verified GitHub v'..ver..' ('..bytes..' bytes)') or ver,ok and 'info' or 'error')
+    if ctx.gfx then ctx.gfx.foreground=nil;ctx.gfx.background=nil end
+    if ctx.state then ctx.state.dirty=true end
+    refresh(ctx);return
+  end
   if id=='download' then
     s.mode='id';s.buffer='';s.message='Pastebin ID (not full URL). Enter to download.';return
   end
@@ -1005,7 +1029,10 @@ function M.draw(ctx)
   local compact=h<19
   if s.tab==1 then
     g:text(2,compact and 4 or 5,'ACTIVE /home/osv4.lua v'..ctx.updater.version,t.text,t.bg,w-3)
-    if not compact then g:text(2,6,'STAGED  '..(s.staged and ('v'..s.staged) or 'none')..'    BACKUP '..(s.backup and 'YES' or 'NO'),t.muted,t.bg,w-3) end
+    if not compact then
+      g:text(2,6,'STAGED '..(s.staged and ('v'..s.staged) or 'none')..' ('..ctx.updater:stagedSource()..')   BACKUP '..(s.backup and 'YES' or 'NO'),t.muted,t.bg,w-3)
+      g:text(2,7,s.online and ('GITHUB  v'..s.online.version..(s.online.newer and '  NEW VERSION' or '  UP TO DATE')) or 'GITHUB  not checked',s.online and (s.online.newer and t.good or t.muted) or t.muted,t.bg,w-3)
+    end
   else
     g:text(2,compact and 4 or 5,'AUTOSTART '..s.autostart..'   GUARD '..(s.guard and 'ACTIVE' or 'CLEAR'),t.text,t.bg,w-3)
     if not compact then g:text(2,6,'OPENOS .shrc  /  NO EEPROM CHANGES',t.muted,t.bg,w-3) end
@@ -1040,7 +1067,7 @@ function M.draw(ctx)
   elseif s.message~='' then
     g:text(2,h-4,s.message,t.warn,t.bg,w-3)
   end
-  g:text(2,h-2,'TRUSTED UPDATES ONLY / BACK and HOME on taskbar',t.muted,t.bg,w-3)
+  g:text(2,h-2,'GITHUB RAW / SHA-256 / MANUAL INSTALL / [BACK] [HOME]',t.muted,t.bg,w-3)
 end
 function M.input(a,ctx)
   local s=data(ctx)
@@ -2366,6 +2393,108 @@ function M:home() if self.current~='desktop' then self.transitions=self.transiti
 return M
 end
 
+package.preload["nexus.core.sha256"] = function(...)
+-- Pure Lua 5.3 streaming SHA-256 for OpenComputers (no Data Card required).
+-- Only stores one 64-byte compression block and a bounded read buffer.
+local M={}
+local MASK=0xffffffff
+local K={
+  0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,
+  0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,
+  0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,
+  0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,
+  0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,
+  0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,
+  0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,
+  0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2
+}
+local H0={0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19}
+local function ror(x,n) return ((x>>n)|(x<<(32-n))) & MASK end
+local function hashBlock(h,block)
+  local w={}
+  for i=1,16 do
+    local a,b,c,d=block:byte(i*4-3,i*4)
+    w[i]=((a<<24)|(b<<16)|(c<<8)|d)&MASK
+  end
+  for i=17,64 do
+    local x,y=w[i-15],w[i-2]
+    local s0=ror(x,7)~ror(x,18)~(x>>3)
+    local s1=ror(y,17)~ror(y,19)~(y>>10)
+    w[i]=(w[i-16]+s0+w[i-7]+s1)&MASK
+  end
+  local a,b,c,d,e,f,g,z=table.unpack(h)
+  for i=1,64 do
+    local s1=ror(e,6)~ror(e,11)~ror(e,25)
+    local ch=(e&f)~((~e)&g)
+    local t1=(z+s1+ch+K[i]+w[i])&MASK
+    local s0=ror(a,2)~ror(a,13)~ror(a,22)
+    local maj=(a&b)~(a&c)~(b&c)
+    local t2=(s0+maj)&MASK
+    z,g,f,e,d,c,b,a=g,f,e,(d+t1)&MASK,c,b,a,(t1+t2)&MASK
+  end
+  local values={a,b,c,d,e,f,g,z}
+  for i=1,8 do h[i]=(h[i]+values[i])&MASK end
+end
+local function new()
+  local h={table.unpack(H0)}
+  local tail=''
+  local size=0
+  local blocks=0
+  local obj={}
+  function obj:update(chunk)
+    assert(type(chunk)=='string','SHA-256 input must be a string')
+    size=size+#chunk
+    local data=tail..chunk
+    local index=1
+    while index+63<=#data do
+      hashBlock(h,data:sub(index,index+63))
+      index=index+64
+      blocks=blocks+1
+      -- Yield to OpenComputers occasionally during lengthy verification.
+      if blocks%128==0 and type(os.sleep)=='function' then pcall(os.sleep,0) end
+    end
+    tail=data:sub(index)
+  end
+  function obj:finish()
+    assert(size < 0x20000000,'SHA-256 input too large for NEXUS updater')
+    local bitlen=size*8
+    local padding='\128'..string.rep('\0',(56-(size+1)%64)%64)
+    local high=math.floor(bitlen/4294967296)
+    local low=bitlen%4294967296
+    local function be32(x)
+      return string.char((x>>24)&255,(x>>16)&255,(x>>8)&255,x&255)
+    end
+    local data=tail..padding..be32(high)..be32(low)
+    for index=1,#data,64 do hashBlock(h,data:sub(index,index+63)) end
+    return string.format('%08x%08x%08x%08x%08x%08x%08x%08x',table.unpack(h))
+  end
+  return obj
+end
+M.new=new
+function M.sum(input)
+  local h=new();h:update(input);return h:finish()
+end
+function M.file(path,open,limit)
+  local f,reason=(open or io.open)(path,'rb')
+  if not f then return nil,'Cannot open SHA file: '..tostring(reason) end
+  local h=new();local bytes=0
+  local ok,result=pcall(function()
+    while true do
+      local chunk=f:read(4096)
+      if not chunk or chunk=='' then break end
+      bytes=bytes+#chunk
+      if limit and bytes>limit then error('File exceeds SHA size limit') end
+      h:update(chunk)
+    end
+    return h:finish()
+  end)
+  pcall(function()f:close()end)
+  if not ok then return nil,tostring(result) end
+  return result,bytes
+end
+return M
+end
+
 package.preload["nexus.core.startup"] = function(...)
 -- Manage OpenOS interactive shell startup; user confirmation required for enable.
 local M={}
@@ -2540,7 +2669,7 @@ return M
 end
 
 package.preload["nexus.core.update"] = function(...)
--- NEXUS update transactions: bounded Pastebin downloads, validate, backup and rollback.
+-- NEXUS updates: verified GitHub Raw releases and legacy Pastebin; safe backup/rollback.
 -- Never execute downloaded code during staging. Only trusted user-supplied IDs.
 local M={}
 M.CORE='/home/osv4.lua'
@@ -2549,8 +2678,13 @@ M.TEMP='/home/nexus/updates/download.part'
 M.STAGED='/home/nexus/updates/staged.lua'
 M.META='/home/nexus/updates/staged.meta'
 M.TXN='/home/nexus/updates/transaction'
-M.VERSION='0.6.2'
+M.VERSION='0.6.4'
+M.GITHUB_MANIFEST='/home/nexus/updates/github-manifest.part'
+M.GITHUB_URL='https://raw.githubusercontent.com/truemisk/NEXUS_OS/main/update.nxs'
+M.GITHUB_RELEASE='https://raw.githubusercontent.com/truemisk/NEXUS_OS/main/dist/nexus.lua'
+M.MANIFEST_LIMIT=2048
 M.MAX_BYTES=300000
+local SHA=require('nexus.core.sha256')
 local function fsDefault() return require('filesystem') end
 local function read(path,max)
   local f=io.open(path,'rb');if not f then return nil end
@@ -2683,6 +2817,155 @@ function M:fetchInternet(id)
   end
   return true,bytes
 end
+-- GitHub manifest is a small, strict key/value file. Remote URLs are pinned to
+-- this project's exact Raw download path to avoid redirects to foreign hosts.
+function M:parseGitHubManifest(content)
+  if type(content)~='string' or #content>M.MANIFEST_LIMIT then return nil,'Manifest missing or too large' end
+  local fields={}
+  for line in (content..'\n'):gmatch('(.-)\n') do
+    line=line:gsub('\r$','')
+    if line~='' and not line:match('^#') then
+      local key,value=line:match('^([a-z0-9_]+)=([^\r\n]+)$')
+      if not key or fields[key] then return nil,'Malformed or duplicate manifest field' end
+      if not ({channel=true,version=true,url=true,sha256=true,size=true})[key] then
+        return nil,'Unknown manifest field: '..key
+      end
+      fields[key]=value
+    end
+  end
+  if fields.channel~='stable' then return nil,'Non-stable update channel' end
+  if not numbers(fields.version) then return nil,'Invalid manifest version' end
+  if fields.url~=M.GITHUB_RELEASE then return nil,'Untrusted GitHub download URL' end
+  if type(fields.sha256)~='string' or #fields.sha256~=64 or not fields.sha256:match('^[0-9a-f]+$') then
+    return nil,'Invalid SHA-256 checksum'
+  end
+  local size=tonumber(fields.size)
+  if not size or size%1~=0 or size<100 or size>self.limit then return nil,'Invalid release size in manifest' end
+  fields.size=size
+  return fields
+end
+-- Prefer the OpenOS wget command proven on the user's Minecraft machine.
+-- For unsupported shells, use the bounded OpenComputers internet iterator.
+function M:fetchURL(url,path,limit)
+  limit=limit or self.limit
+  if url~=M.GITHUB_URL and url~=M.GITHUB_RELEASE then return false,'Untrusted download URL' end
+  pcall(self.fs.remove,path)
+  local shellError
+  if type(self.shellExecute)=='function' then
+    local launched,a,b=pcall(self.shellExecute,'wget "'..url..'" '..path)
+    if launched and self.fs.exists(path) then
+      local count=self.fs.size(path)
+      if type(count)=='number' and count>0 and count<=limit then return true,count end
+      shellError='wget response size invalid: '..tostring(count)
+    else shellError='wget did not save file: '..tostring(launched and (b or a) or a):sub(1,80) end
+    pcall(self.fs.remove,path)
+  end
+  local request=self.fetch
+  if not request then
+    local found,internet=pcall(require,'internet')
+    if not found or type(internet.request)~='function' then
+      return false,(shellError or 'Network unavailable')..' / Internet Card unavailable'
+    end
+    request=internet.request
+  end
+  local started,iter,reason=pcall(request,url)
+  if not started then return false,(shellError or '')..' / '..tostring(iter):sub(1,100) end
+  local kind=type(iter)
+  local mt=kind=='table' and getmetatable(iter) or nil
+  if kind~='function' and not (kind=='table' and type(mt)=='table' and type(mt.__call)=='function') then
+    return false,(shellError or '')..' / HTTP iterator missing: '..tostring(reason or kind):sub(1,90)
+  end
+  local f,err=self.open(path,'wb')
+  if not f then return false,'Cannot open download: '..tostring(err) end
+  local count=0
+  local transferred,problem=pcall(function()
+    for block in iter do
+      if type(block)~='string' then error('Invalid HTTP chunk') end
+      count=count+#block
+      if count>limit then error('Download exceeds size limit') end
+      assert(f:write(block))
+    end
+    assert(f:flush())
+  end)
+  pcall(function() f:close() end)
+  if not transferred or count==0 then
+    pcall(self.fs.remove,path)
+    return false,transferred and 'Empty response' or tostring(problem):sub(1,100)
+  end
+  return true,count
+end
+function M:checkGitHub()
+  local ok,reason=self:ensure()
+  if not ok then return false,reason end
+  local downloaded,err=self:fetchURL(M.GITHUB_URL,M.GITHUB_MANIFEST,M.MANIFEST_LIMIT)
+  if not downloaded then return false,err end
+  local content=self.read(M.GITHUB_MANIFEST,M.MANIFEST_LIMIT+1)
+  pcall(self.fs.remove,M.GITHUB_MANIFEST)
+  local manifest,why=self:parseGitHubManifest(content)
+  if not manifest then return false,why end
+  local a,b=numbers(manifest.version),numbers(self.version)
+  manifest.newer=false
+  for i=1,3 do
+    if a[i]~=b[i] then manifest.newer=a[i]>b[i];break end
+  end
+  return true,manifest
+end
+function M:verifyGitHubFile(path,manifest)
+  local size=self.fs.size(path)
+  if type(size)~='number' or size~=manifest.size then return false,'GitHub file size mismatch' end
+  local digest,reason=SHA.file(path,self.open,self.limit)
+  if not digest then return false,'SHA-256 failed: '..tostring(reason) end
+  if digest~=manifest.sha256 then return false,'SHA-256 mismatch: download does not match manifest' end
+  local ver,why=self:validate(path)
+  if not ver then return false,why end
+  if ver~=manifest.version then return false,'Downloaded version differs from manifest' end
+  return true
+end
+function M:stageGitHub(manifest)
+  if self.fs.exists(M.TXN) then
+    local accepted,reason=self:acknowledgeRunning()
+    if not accepted then return false,'Pending update transaction: '..tostring(reason) end
+  end
+  -- Refetch the manifest before downloading so the installed candidate and
+  -- its hash always refer to the same release metadata.
+  local ok,latest=self:checkGitHub()
+  if not ok then return false,latest end
+  if not latest.newer then return false,'GitHub has no newer stable version' end
+  if manifest and manifest.version~=latest.version then
+    return false,'GitHub version changed; check updates again'
+  end
+  local downloaded,bytes=self:fetchURL(M.GITHUB_RELEASE,M.TEMP,self.limit)
+  if not downloaded then return false,bytes end
+  local verified,reason=self:verifyGitHubFile(M.TEMP,latest)
+  if not verified then pcall(self.fs.remove,M.TEMP);return false,reason end
+  -- Existing staged data remains intact if downloading or verification fails.
+  local previous=M.STAGED..'.old'
+  pcall(self.fs.remove,previous)
+  if self.fs.exists(M.STAGED) then
+    local moved,why=self.fs.rename(M.STAGED,previous)
+    if not moved then pcall(self.fs.remove,M.TEMP);return false,'Cannot preserve old staged file: '..tostring(why) end
+  end
+  local placed,why=self.fs.rename(M.TEMP,M.STAGED)
+  if not placed then
+    if self.fs.exists(previous) then self.fs.rename(previous,M.STAGED) end
+    return false,'Cannot stage GitHub release: '..tostring(why)
+  end
+  local meta='source=github\nversion='..latest.version..'\nsize='..latest.size..'\nsha256='..latest.sha256..'\n'
+  local saved,saveError=self.write(M.META,meta)
+  if not saved then
+    pcall(self.fs.remove,M.STAGED)
+    if self.fs.exists(previous) then self.fs.rename(previous,M.STAGED) end
+    return false,'Cannot save checksum metadata: '..tostring(saveError)
+  end
+  pcall(self.fs.remove,previous)
+  return true,latest.version,bytes
+end
+function M:stagedSource()
+  local m=self.read(M.META,256)
+  if not self.fs.exists(M.STAGED) then return 'none' end
+  if m and m:find('^source=github\n') then return 'github-sha256' end
+  return 'manual/legacy'
+end
 function M:stage(id)
   if type(id)~='string' or not id:match('^[%w]+$') or #id<6 or #id>16 then
     return false,'Pastebin ID must be 6-16 letters/digits'
@@ -2721,6 +3004,20 @@ function M:commit()
   if not self.fs.exists(M.STAGED) then return false,'No staged update' end
   local ver,why=self:validate(M.STAGED)
   if not ver then return false,why end
+  local meta=self.read(M.META,256)
+  if meta and meta:find('^source=github\n') then
+    local v=meta:match('\nversion=([^\n]+)')
+    local digest=meta:match('\nsha256=([0-9a-f]+)')
+    local size=tonumber(meta:match('\nsize=(%d+)'))
+    if v~=ver or not digest or #digest~=64 or not size then
+      return false,'GitHub checksum metadata invalid'
+    end
+    local calculated,whySHA=SHA.file(M.STAGED,self.open,self.limit)
+    if not calculated then return false,'GitHub checksum read failed: '..tostring(whySHA) end
+    if calculated~=digest or self.fs.size(M.STAGED)~=size then
+      return false,'GitHub candidate changed since download (SHA-256 mismatch)'
+    end
+  end
   if not self.fs.exists(self.current) then return false,'Active OS missing: '..self.current end
   if self.fs.exists(M.TXN) then return false,'Unresolved update transaction' end
   local ok,err=self:ensure();if not ok then return false,err end
@@ -2770,7 +3067,7 @@ return M
 end
 
 package.preload["nexus.main"] = function(...)
--- NEXUS OS v0.6.2 | Phase 5B | one foreground app, no boot modifications.
+-- NEXUS OS v0.6.4 | Phase 5B | one foreground app, no boot modifications.
 local Hardware=require('nexus.core.hardware')
 local Graphics=require('nexus.core.graphics')
 local Theme=require('nexus.core.theme')
@@ -2898,7 +3195,7 @@ local function run(deps)
     stop=function() if automation.enabled then automation:disable() end end})
   services:activateDefaults(ctx,computer.uptime(),wasUnclean)
   if wasUnclean then notices:push('Previous session ended unexpectedly. Open System Center / Recovery.','warn',computer.uptime()) end
-  logger:log('INFO','core','NEXUS v0.6.2 launched')
+  logger:log('INFO','core','NEXUS v0.6.4 launched')
   function ctx.notify(text,kind)
     notices:push(text,kind,computer.uptime())
     state.dirty=true
@@ -3092,7 +3389,7 @@ local function run(deps)
     if config.data.splash then
       local w,h=gfx:size()
       gfx:fill(1,1,w,h,ctx.theme.bg)
-      gfx:center(math.max(2,math.floor(h/2)),'NEXUS OS / v0.6.2',ctx.theme.accent,ctx.theme.bg)
+      gfx:center(math.max(2,math.floor(h/2)),'NEXUS OS / v0.6.4',ctx.theme.accent,ctx.theme.bg)
       -- Pull once; forward this event to dispatch so no input is dropped.
       local e,a,b,c,d=event.pull(0.2)
       dispatch(Input.decode(e,a,b,c,hardware,keys,d))
@@ -3230,7 +3527,7 @@ function M.header(g,t,w,title,mode)
   g:fill(1,1,w,2,t.surface)
   g:text(2,1,'NEXUS / WORKSPACE',t.accent,t.surface,w-2)
   g:text(2,2,title or 'DESKTOP',t.text,t.surface,w-2)
-  if mode=='standard' then g:text(math.max(2,w-14),1,'v0.6.2 OPENOS',t.muted,t.surface,14) end
+  if mode=='standard' then g:text(math.max(2,w-14),1,'v0.6.4 OPENOS',t.muted,t.surface,14) end
 end
 function M.taskbar(ctx)
   local g,t,s=ctx.gfx,ctx.theme,ctx.state

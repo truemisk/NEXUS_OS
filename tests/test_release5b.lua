@@ -4,7 +4,7 @@ local function bytes(path)
  local f=assert(io.open(path,'rb'));local data=f:read('*a');f:close();return data
 end
 local prior=bytes('dist/nexus-test-update-v0.5.1.lua')
-local nextRelease=bytes('dist/nexus.lua')
+local nextRelease=bytes('releases/nexus-v0.6.2.lua')
 assert(prior:find('NEXUS%-VERSION: 0%.5%.1') and nextRelease:find('NEXUS%-VERSION: 0%.6%.2'))
 assert(#nextRelease<300000 and #nextRelease>120000)
 local nodes={['/home']={dir=true},['/home/nexus']={dir=true},[U.CORE]={data=prior}}

@@ -1,4 +1,4 @@
--- NEXUS Update Center: explicit Pastebin ID, explicit install confirmation,
+-- NEXUS Update Center: GitHub Raw stable channel + legacy Pastebin,
 -- and OpenOS .shrc autostart management. No automatic remote code execution.
 local Widgets=require('nexus.ui.widgets')
 local Update=require('nexus.core.update')
@@ -7,9 +7,11 @@ local function data(ctx) return ctx.state.updateCenter end
 local function items(ctx)
   if data(ctx).tab==1 then
     return {
-      {title='DOWNLOAD FROM PASTEBIN',detail='Enter trusted Pastebin release ID',id='download'},
+      {title='CHECK GITHUB UPDATES',detail='Read stable NEXUS manifest from GitHub Raw',id='checkgithub'},
+      {title='DOWNLOAD GITHUB RELEASE',detail='SHA-256 verify before staging',id='downloadgithub'},
       {title='INSTALL STAGED RELEASE',detail='Back up OS, switch release, restart NEXUS',id='install'},
       {title='ROLL BACK LAST RELEASE',detail='Restore previous.lua if available',id='rollback'},
+      {title='DOWNLOAD FROM PASTEBIN',detail='Legacy: trusted pastebin.com ID',id='download'},
       {title='REFRESH STATUS',detail='Check staged release and backups',id='refresh'}
     }
   end
@@ -28,7 +30,7 @@ local function refresh(ctx)
   s.guard=ctx.startup.fs.exists(ctx.startup.GUARD or '/home/nexus/startup.guard')
 end
 function M.open(ctx)
-  ctx.state.updateCenter={tab=1,index=1,scroll=0,hits={},mode=nil,buffer='',confirm=nil,message='',staged=nil}
+  ctx.state.updateCenter={tab=1,index=1,scroll=0,hits={},mode=nil,buffer='',confirm=nil,message='',staged=nil,online=nil}
   refresh(ctx)
 end
 function M.close(ctx) ctx.state.updateCenter=nil end
@@ -39,6 +41,28 @@ end
 local function act(ctx,id)
   local s=data(ctx)
   if id=='refresh' then refresh(ctx);message(ctx,'Update status refreshed');return end
+  if id=='checkgithub' then
+    s.message='Checking GitHub...';M.draw(ctx)
+    local ok,result=ctx.updater:checkGitHub()
+    if ok then
+      s.online=result
+      message(ctx,result.newer and ('GitHub v'..result.version..' available') or ('GitHub v'..result.version..' is not newer'),'info')
+    else
+      s.online=nil
+      message(ctx,'GitHub check failed: '..tostring(result),'error')
+    end
+    if ctx.gfx then ctx.gfx.foreground=nil;ctx.gfx.background=nil end
+    if ctx.state then ctx.state.dirty=true end
+    refresh(ctx);return
+  end
+  if id=='downloadgithub' then
+    s.message='Downloading and checking SHA-256...';M.draw(ctx)
+    local ok,ver,bytes=ctx.updater:stageGitHub(s.online)
+    message(ctx,ok and ('SHA-256 verified GitHub v'..ver..' ('..bytes..' bytes)') or ver,ok and 'info' or 'error')
+    if ctx.gfx then ctx.gfx.foreground=nil;ctx.gfx.background=nil end
+    if ctx.state then ctx.state.dirty=true end
+    refresh(ctx);return
+  end
   if id=='download' then
     s.mode='id';s.buffer='';s.message='Pastebin ID (not full URL). Enter to download.';return
   end
@@ -83,7 +107,10 @@ function M.draw(ctx)
   local compact=h<19
   if s.tab==1 then
     g:text(2,compact and 4 or 5,'ACTIVE /home/osv4.lua v'..ctx.updater.version,t.text,t.bg,w-3)
-    if not compact then g:text(2,6,'STAGED  '..(s.staged and ('v'..s.staged) or 'none')..'    BACKUP '..(s.backup and 'YES' or 'NO'),t.muted,t.bg,w-3) end
+    if not compact then
+      g:text(2,6,'STAGED '..(s.staged and ('v'..s.staged) or 'none')..' ('..ctx.updater:stagedSource()..')   BACKUP '..(s.backup and 'YES' or 'NO'),t.muted,t.bg,w-3)
+      g:text(2,7,s.online and ('GITHUB  v'..s.online.version..(s.online.newer and '  NEW VERSION' or '  UP TO DATE')) or 'GITHUB  not checked',s.online and (s.online.newer and t.good or t.muted) or t.muted,t.bg,w-3)
+    end
   else
     g:text(2,compact and 4 or 5,'AUTOSTART '..s.autostart..'   GUARD '..(s.guard and 'ACTIVE' or 'CLEAR'),t.text,t.bg,w-3)
     if not compact then g:text(2,6,'OPENOS .shrc  /  NO EEPROM CHANGES',t.muted,t.bg,w-3) end
@@ -118,7 +145,7 @@ function M.draw(ctx)
   elseif s.message~='' then
     g:text(2,h-4,s.message,t.warn,t.bg,w-3)
   end
-  g:text(2,h-2,'TRUSTED UPDATES ONLY / BACK and HOME on taskbar',t.muted,t.bg,w-3)
+  g:text(2,h-2,'GITHUB RAW / SHA-256 / MANUAL INSTALL / [BACK] [HOME]',t.muted,t.bg,w-3)
 end
 function M.input(a,ctx)
   local s=data(ctx)
